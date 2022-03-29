@@ -15,6 +15,8 @@ const char* TAB = "   ";
 const char* DASHES = "---";
 
 char indent_tracker[STR_BUF_LEN];
+char pattern[STR_BUF_LEN];
+bool do_regex = false;
 
 void str_concat_slash (const char* str1, const char* str2, char* str_buffer) {
     int str1_len = strlen(str1);
@@ -58,6 +60,72 @@ void print_indents(int tree_depth) {
             printf("%c%s", ' ', TAB);
         }
     }
+}
+
+bool is_cmdline_regex(const char* cmd) {
+    int cmd_len = strlen(cmd);
+    for (int i = 0; i < cmd_len; i ++) {
+        if (i+1 < cmd_len and cmd[i] == '-' and cmd[i+1] == 'P') {
+            // cmd contains "-P"
+            return true;
+        }
+    }
+    return false;
+}
+
+// # commented out since we allow for cmd to just be "-P" 
+// => will use default path with empty regex (nothing will match!)
+// bool is_regex_cmd_valid(const char* cmd) {
+//     int cmd_len = strlen(cmd);
+//     for (int i = 0; i < cmd_len; i++) {
+//         if (cmd[i] == '-' and cmd[i+1] == 'P') {
+//             if (i+2 < cmd_len and cmd[i+2] == ' ') {
+//                 // we permit patterns to be empty
+//                 return true;
+//             }
+//         }
+//     }
+// }
+
+void parse_path_from_valid_regex_cmd(const char* cmd, char* path_buf) {
+    int cmd_len = strlen(cmd);
+    int path_buf_i = 0;
+
+    if (cmd[0] == '-' and cmd[1] == 'P') {
+        // cmd is "-P ..." => has no specified path
+        path_buf[0] = '\n';
+        return;
+    }
+    
+    for (int i = 0; i < cmd_len; i ++) {
+        if (i+2 < cmd_len and cmd[i] == ' ' and cmd[i+1] == '-' and cmd[i+2] == 'P') {
+            // has reached the "-P" part of "... -P ..."
+            path_buf[path_buf_i] == '\0';
+            return;
+        } else {
+            // copy cmd characters into path_buf
+            path_buf[path_buf_i] = cmd[i];
+            path_buf_i ++;
+        }
+    }
+}
+
+void parse_pattern_from_valid_regex_cmd(const char* cmd, char* pattern_buf) {
+    int cmd_len = strlen(cmd);
+    int pattern_buf_i = 0;
+    bool has_reached_pattern = false;
+    for (int i = 0; i < cmd_len; i ++) {
+        if (i > 1 and cmd[i-2] == '-'  and cmd[i-1] == 'P' and cmd[i] == ' ' and cmd[i-2] == '-') {
+            // has reached the end of the "-P " part of cmd; start copying at next iter
+            has_reached_pattern = true;
+            continue;
+        } else if (has_reached_pattern) {
+            // copy cmd chars into pattern_buf:
+            pattern_buf[pattern_buf_i] = cmd[i];
+            pattern_buf_i ++;
+        }
+    }
+    pattern_buf[pattern_buf_i] = '\0';
 }
 
 void enter_directory_tree(const char* path, int tree_depth) {
@@ -118,13 +186,6 @@ int main(const char *cmdline)
 {
     // TODO: Implement me!
 
-    const char *path;
-    if (!cmdline || strlen(cmdline) == 0) {
-        path = "/usr";
-    } else {
-        path = cmdline;
-    }
-
     // // string concat test:
     // char str1[4] = "abc";
     // char str2[4] = "def";
@@ -138,14 +199,52 @@ int main(const char *cmdline)
     // get_substr (str1, str_buf, 2);
     // printf("substr_buf = %s\n", str_buf);
 
+    // path parsing test:
+    // char str[7] = "abc -P";
+    // char str[3] = "-P";
+    // char str_buf[STR_BUF_LEN];
+    // parse_path_from_valid_regex_cmd(str, str_buf);
+    // printf("parsed path = %s\n", str_buf);
+
+    // pattern parsing test:
+    // char str[7] = "-P abc";
+    // char str_buf[STR_BUF_LEN];
+    // parse_pattern_from_valid_regex_cmd(str, str_buf);
+    // printf("pattern = %s\n", str_buf);
+
+
     // initialise indent_tracker arr:
     indent_tracker[0] = '|';
+
+    const char *cmd;
+    const char* path;
+
+    char path_buf[STR_BUF_LEN];
+
+    if (!cmdline || strlen(cmdline) == 0) {
+        cmd = "/usr";
+    } else {
+        cmd = cmdline;
+    }
+
+    if (is_cmdline_regex(cmd)) {
+        do_regex = true;
+        // get pattern from cmd
+        parse_pattern_from_valid_regex_cmd(cmd, pattern);
+        printf("pattern = %s\n", pattern);
+        // get path from cmd
+        parse_path_from_valid_regex_cmd(cmd, path_buf);
+        path = path_buf;
+    } else {
+        path = cmd;
+    }
 
     printf("path = %s\n", path);
 
     printf(".\n");
     enter_directory_tree(path, TREE_DEPTH_BEFORE_ROOT);
 
+    printf("%d directories, %d files\n", num_of_directories, num_of_files);
 
     return 0;
 }
