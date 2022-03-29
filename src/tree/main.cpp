@@ -93,7 +93,7 @@ void parse_path_from_valid_regex_cmd(const char* cmd, char* path_buf) {
 
     if (cmd[0] == '-' and cmd[1] == 'P') {
         // cmd is "-P ..." => has no specified path
-        path_buf[0] = '\n';
+        path_buf[0] = '\0';
         return;
     }
     
@@ -186,37 +186,10 @@ int main(const char *cmdline)
 {
     // TODO: Implement me!
 
-    // // string concat test:
-    // char str1[4] = "abc";
-    // char str2[4] = "def";
-    // char str_buf[10];
-    // str_concat_slash(str1, str2, str_buf);
-    // printf("str_buf = %s\n", str_buf);
-
-    // substr test:
-    // char str1[5] = "abcd";
-    // char str_buf[3];
-    // get_substr (str1, str_buf, 2);
-    // printf("substr_buf = %s\n", str_buf);
-
-    // path parsing test:
-    // char str[7] = "abc -P";
-    // char str[3] = "-P";
-    // char str_buf[STR_BUF_LEN];
-    // parse_path_from_valid_regex_cmd(str, str_buf);
-    // printf("parsed path = %s\n", str_buf);
-
-    // pattern parsing test:
-    // char str[7] = "-P abc";
-    // char str_buf[STR_BUF_LEN];
-    // parse_pattern_from_valid_regex_cmd(str, str_buf);
-    // printf("pattern = %s\n", str_buf);
-
-
     // initialise indent_tracker arr:
     indent_tracker[0] = '|';
 
-    const char *cmd;
+    const char* cmd;
     const char* path;
 
     char path_buf[STR_BUF_LEN];
@@ -234,7 +207,14 @@ int main(const char *cmdline)
         printf("pattern = %s\n", pattern);
         // get path from cmd
         parse_path_from_valid_regex_cmd(cmd, path_buf);
-        path = path_buf;
+        
+        if (strlen(path_buf) == 0) {
+            // path_buf is empty
+            path = "/usr";
+        } else {
+            path = path_buf;
+        }
+
     } else {
         path = cmd;
     }
@@ -244,7 +224,7 @@ int main(const char *cmdline)
     printf(".\n");
     enter_directory_tree(path, TREE_DEPTH_BEFORE_ROOT);
 
-    printf("%d directories, %d files\n", num_of_directories, num_of_files);
+    printf("\n%d directories, %d files\n", num_of_directories, num_of_files);
 
     return 0;
 }
