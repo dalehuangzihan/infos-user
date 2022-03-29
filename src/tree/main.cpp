@@ -128,6 +128,98 @@ void parse_pattern_from_valid_regex_cmd(const char* cmd, char* pattern_buf) {
     pattern_buf[pattern_buf_i] = '\0';
 }
 
+
+bool does_satisfy_regex(const char* text, const char* pattern, int text_i) {
+    int text_len = strlen(text);
+    int pattern_len = strlen(pattern);
+    bool has_satisfied_regex_before = false;
+
+    char bracket_buf[STR_BUF_LEN];
+    int bracket_buf_i = 0;  // is index for bracket buf elem
+    int bracket_buf_len = 0;
+    bool is_within_brackets = false;
+
+    for (int j = 0; j < pattern_len; j ++) {
+
+        if (pattern[j] == '(') {
+            printf("bloop1\n");
+            is_within_brackets = true;
+        } else if (is_within_brackets and pattern[j+1] != ')') {
+            printf("bloop2\n");
+            bracket_buf[bracket_buf_i] = pattern[j];
+            bracket_buf_i ++;
+        } else if (is_within_brackets and pattern[j+1] == ')') {
+            printf("bloop3\n");
+            // add last (curr) elem in brackets to bracket_buf
+            bracket_buf[bracket_buf_i] = pattern[j];
+            bracket_buf_i ++;
+            is_within_brackets = false;
+            bracket_buf[bracket_buf_i] = '\0';
+            bracket_buf_len = bracket_buf_i;
+            bracket_buf_i = 0;
+            printf("() bracket_buf = %s, len = %d\n", bracket_buf, bracket_buf_len);
+
+
+        // Check for "<...>*":
+        } else if (j+1 < pattern_len and pattern[j+1] == '*') {
+            printf("bloop_4\n");
+            char pattern_char = pattern[j];
+            printf("pattern char = %c\n", pattern_char);
+            
+            for (int m = text_i; m < text_len; m ++) {
+                if (text[m] == pattern_char) {
+                    // match found, update text_i:
+                    printf("*1 text[%d] (%c) == pattern[%d] (%c)\n", m, text[m], j, pattern[j]);
+                    has_satisfied_regex_before = true;
+                    text_i = m;
+                    if (text_i+1 == text_len) j++;  // is last char of text, move to "next" pattern term; skips * symbol
+                } else {
+                    printf("*2 text[%d] (%c) != pattern[%d] (%c)\n", m, text[m], j, pattern[j]);
+                    if (text_len == 1 and j+1 == pattern_len-1 and !has_satisfied_regex_before) {
+                        // text only has one char
+                        // curr regex term is last term in pattern (not matched)
+                        // has not matched any terms before now
+                        return false;
+                    }
+                    // if there are still pattern terms left, update pattern_len and eval curr text char with next regex term
+                    if (j + 1 < pattern_len) {
+                        text_i = m;
+                        j ++;   // to skip the * symbol
+                    }
+                    break;
+                }  
+            }
+
+
+        } else {
+            printf("bloop6\n");
+            // pattern char is not *-regex nor ?-regex
+            // check if curr pattern char == curr text char
+            if (pattern[j] == text[text_i]) {
+                // match found, move on to next j text_i pair:
+                printf("_1 pattern[%d] (%c) == text[%d] (%c)\n", j, pattern[j], text_i, text[text_i]);
+                has_satisfied_regex_before = true;
+                // if (j+1 < pattern_len) j ++;
+                if (text_i+1 < text_len) text_i ++;
+            } else {
+                // match not found:
+                return false;
+            }
+
+        }
+    }
+    // have exhausted the number of pattern chars
+    int num_of_remainging_text_chars = text_len - (text_i + 1);
+    printf("Final text_i=%d, num of remaining chars=%d\n", text_i, num_of_remainging_text_chars);
+    if (num_of_remainging_text_chars == 0) {
+        return true;
+    } else {
+        return false;
+    }
+
+}
+
+
 void enter_directory_tree(const char* path, int tree_depth) {
     if (!is_path_a_directory(path)) {
         printf("Error: path is not a directory!");
@@ -221,10 +313,16 @@ int main(const char *cmdline)
 
     printf("path = %s\n", path);
 
-    printf(".\n");
-    enter_directory_tree(path, TREE_DEPTH_BEFORE_ROOT);
+    // regex testing ground:
+    if (do_regex) {
+        bool is_satisfy = does_satisfy_regex(path, pattern, 0);
+        printf("does_satisfy_regex = %d\n", is_satisfy);
+    }
 
-    printf("\n%d directories, %d files\n", num_of_directories, num_of_files);
+    // printf(".\n");
+    // enter_directory_tree(path, TREE_DEPTH_BEFORE_ROOT);
+
+    // printf("\n%d directories, %d files\n", num_of_directories, num_of_files);
 
     return 0;
 }
