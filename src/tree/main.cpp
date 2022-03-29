@@ -180,7 +180,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, int text_i) {
         } else if (j+1 < pattern_len and pattern[j+1] == '*') {
             printf("bloop_4\n");
             char pattern_char = pattern[j];
-            printf("pattern[%d] = %c\n", j, pattern_char);
+            printf("pattern[%d] = %c, bracket_type = %d\n", j, pattern_char, bracket_type);
             
             for (int m = text_i; m < text_len; m ++) {
                 
@@ -233,11 +233,31 @@ bool does_satisfy_regex(const char* text, const char* pattern, int text_i) {
             printf("bloop_5\n");
             char pattern_char = pattern[j];
             printf("pattern[%d] = %c\n", j, pattern_char);
-            // ab
-            // a?b
-            if (text[text_i] == pattern_char) {
+
+            bool is_char_in_full_bracket = false;
+            for (int i = 0; i < bracket_buf_len; i ++) {
+                if (bracket_buf[i] == text[text_i]) {
+                    printf("brkt match: bracket_buf[%d] (%c) == text[%d] (%c)\n", i, bracket_buf[i], text_i, text[text_i]);
+                    is_char_in_full_bracket = true;
+                    break;
+                }
+            }
+
+            if (bracket_type == NO_BRACKET and text[text_i] == pattern_char) {
                 // match found, update text_i:
                 printf("?1 text[%d] (%c) == pattern[%d] (%c)\n", text_i, text[text_i], j, pattern[j]);
+                has_satisfied_regex_before = true;
+                if (text_i+1 < text_len and j+2 < pattern_len) text_i ++;   // dont increment if there are no more regex chars to compare to
+
+            } else if (bracket_type == RANGE_BRACKET and bracket_start_char <= text[text_i] and text[text_i] <= bracket_end_char) {
+                // match found, update text_i:
+                printf("?2 %c <= text[%d] (%c) <= %c\n", bracket_start_char, text_i, text[text_i], bracket_end_char);
+                has_satisfied_regex_before = true;
+                if (text_i+1 < text_len and j+2 < pattern_len) text_i ++;   // dont increment if there are no more regex chars to compare to
+
+            } else if (bracket_type == FULL_BRACKET and is_char_in_full_bracket) {
+                // match found, update text_i:
+                printf("?3 text[%d] (%c) found in full bracket %s\n", text_i, text[text_i], bracket_buf);
                 has_satisfied_regex_before = true;
                 if (text_i+1 < text_len and j+2 < pattern_len) text_i ++;   // dont increment if there are no more regex chars to compare to
 
@@ -252,6 +272,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, int text_i) {
                     return false;
                 }
             }
+            bracket_type = NO_BRACKET;  // reset bracket mode since moving on to next regex term
             j ++;  // move to next/"next" pattern term; skips ? symbol
             
 
