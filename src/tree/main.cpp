@@ -53,9 +53,9 @@ void str_concat_slash (const char* str1, const char* str2, char* str_buffer) {
  * @brief Get the substr of the given str, starting from index
  * substr_start_i; requires a buffer to be provided
  * 
- * @param str 
- * @param substr_buf 
- * @param substr_start_i 
+ * @param str is the source string that we want to get the substring from
+ * @param substr_buf is the buffer to store the substring
+ * @param substr_start_i is the start index (inclusive) of the substring in the source string
  */
 void get_substr (const char* str, char* substr_buf, int substr_start_i) {
     int str_len = strlen(str);
@@ -72,9 +72,9 @@ void get_substr (const char* str, char* substr_buf, int substr_start_i) {
 /**
  * @brief Checks if a given path is a directory (can be entered)
  * 
- * @param path 
- * @return true 
- * @return false 
+ * @param path is the path to the directory under inspection
+ * @return true if the path leads to a directory
+ * @return false if the path leads to a file
  */
 bool is_path_a_directory (const char* path) {
     HDIR dir = opendir(path, 0);
@@ -88,7 +88,7 @@ bool is_path_a_directory (const char* path) {
 /**
  * @brief Prints the indentations in the tree display
  * 
- * @param tree_depth 
+ * @param tree_depth is the current depth of the tree that we're reading
  */
 void print_indents(int tree_depth) {
     for (int i = 0; i < tree_depth; i ++) {
@@ -101,11 +101,11 @@ void print_indents(int tree_depth) {
 }
 
 /**
- * @brief Checks if the command given is a regex command
+ * @brief Checks if the command given is a regex command (i.e. contains a "-P")
  * 
- * @param cmd 
- * @return true 
- * @return false 
+ * @param cmd is the command under inspection
+ * @return true if the command is a regex command
+ * @return false if the command is not a regex command
  */
 bool is_cmdline_regex(const char* cmd) {
     int cmd_len = strlen(cmd);
@@ -121,8 +121,8 @@ bool is_cmdline_regex(const char* cmd) {
 /**
  * @brief Parse the path from the valid regex command
  * 
- * @param cmd 
- * @param path_buf 
+ * @param cmd is the regex command that we're parsing the path from
+ * @param path_buf is the buffer to store the parsed path
  */
 void parse_path_from_valid_regex_cmd(const char* cmd, char* path_buf) {
     int cmd_len = strlen(cmd);
@@ -150,8 +150,8 @@ void parse_path_from_valid_regex_cmd(const char* cmd, char* path_buf) {
 /**
  * @brief Parse the pattern from the valid regex command
  * 
- * @param cmd 
- * @param pattern_buf 
+ * @param cmd is the regex comand that we're parsing the pattern from
+ * @param pattern_buf is the buffer to store the parsed pattern
  */
 void parse_pattern_from_valid_regex_cmd(const char* cmd, char* pattern_buf) {
     int cmd_len = strlen(cmd);
@@ -174,9 +174,9 @@ void parse_pattern_from_valid_regex_cmd(const char* cmd, char* pattern_buf) {
 /**
  * @brief Checks if the given path is valid
  * 
- * @param path 
- * @return true 
- * @return false 
+ * @param path is the path under inspection
+ * @return true if the path has the correct syntax
+ * @return false if the path has the wrong syntax
  */
 bool is_path_valid(const char* path) {
     int path_len = strlen(path);
@@ -192,20 +192,21 @@ bool is_path_valid(const char* path) {
  * @brief Checks if the character is any of the following symbols:
  * '*', '?', '(', ')'
  * 
- * @param c 
- * @return true 
- * @return false 
+ * @param c is the character under inspection
+ * @return true if the given character is a special symbol
+ * @return false if the given character is not a special symbol
  */
 bool is_special_symbol(char c) {
     return c == '(' or c == ')' or c == '*' or c == '?';
 }
 
 /**
- * @brief Checks if the brackets in a given pattern tallies
+ * @brief Checks if the brackets in a given pattern tallies;
+ * pattern should have the same number of open and close brackets
  * 
- * @param pattern 
- * @return true 
- * @return false 
+ * @param pattern is the pattern under inspection
+ * @return true if the brackets tally up in the pattern
+ * @return false if the brackets do not tally up in the pattern
  */
 bool do_brackets_tally(const char* pattern) {
     int num_open_brackets = 0;
@@ -223,9 +224,9 @@ bool do_brackets_tally(const char* pattern) {
 /**
  * @brief Checks if a given pattern is valid
  * 
- * @param pattern 
- * @return true 
- * @return false 
+ * @param pattern is the pattern under inspection
+ * @return true if the pattern is of a valid format
+ * @return false if the pattern is not of a valid format
  */
 bool is_pattern_valid(const char* pattern) {
     bool is_valid = true;
@@ -265,24 +266,23 @@ bool is_pattern_valid(const char* pattern) {
             if (!is_valid) break;
         }
     }
-    // check that brackets tally
+    // check that brackets tally:
     is_valid = is_valid and do_brackets_tally(pattern);
     if (!is_valid) printf("Error: illegal pattern \"%s\" entered!\n", pattern);
     return is_valid;
 }
 
 /**
- * @brief Checks if the given character is contained in the full bracket
+ * @brief Checks if the given character is contained in the full bracket (a..z)
  * 
- * @param bracket_buf 
- * @param text 
- * @param text_m 
- * @return true 
- * @return false 
+ * @param bracket_buf is the buffer containing the elements inside the brackets
+ * @param c is the character under inspection
+ * @return true if the character is contained in the bracket contents
+ * @return false if the character is not contained in the bracket contents
  */
-bool is_char_in_full_bracket(const char* bracket_buf, const char* text, int text_m) {
+bool is_char_in_full_bracket(const char* bracket_buf, char c) { //const char* text, int text_m) {
     for (int i = 0; i < strlen(bracket_buf); i ++) {
-        if (bracket_buf[i] == text[text_m]) {
+        if (bracket_buf[i] == c) {// text[text_m]) {
             // printf("brkt match: bracket_buf[%d] (%c) == text[%d] (%c)\n", i, bracket_buf[i], m, text[m]);
             return true;
         }
@@ -293,15 +293,15 @@ bool is_char_in_full_bracket(const char* bracket_buf, const char* text, int text
 /**
  * @brief Performs the recursive look-ahead for regex evaluation
  * 
- * @param text 
- * @param text_m 
- * @param pattern 
- * @param pattern_j 
- * @param subtext_buf 
- * @param subpattern_buf 
- * @param is_recurse 
- * @return true 
- * @return false 
+ * @param text is the text that we're working with before lookahead
+ * @param text_m is the index position of the text character that we are currently inspecting
+ * @param pattern is the pattern that we're working with before lookahead
+ * @param pattern_j is the index position of the regex pattern character that we are currently inspecting
+ * @param subtext_buf is the buffer to store the subtext used for the lookahead
+ * @param subpattern_buf is the buffer used to store the regex subpattern used for the lookahead
+ * @param is_recurse is a flag to indicate whether or not this lookahead should allow recursive/nested calls within itself
+ * @return true if the lookahead subtext satisfies the regex subpattern
+ * @return false if the lookahead does not satisfy the regex subpattern
  */
 bool do_recursive_regex_lookahead(const char* text, int text_m, const char* pattern, int pattern_j, char* subtext_buf, char* subpattern_buf, bool is_recurse) {
     get_substr(pattern, subpattern_buf, pattern_j);
@@ -315,11 +315,11 @@ bool do_recursive_regex_lookahead(const char* text, int text_m, const char* patt
 /**
  * @brief Checks if the given text satisfies the given regex pattern
  * 
- * @param text 
- * @param pattern 
- * @param do_lookahead 
- * @return true 
- * @return false 
+ * @param text is the text that we're checking agaist the regex pattern
+ * @param pattern is the regex pattern that we are checking the text against
+ * @param do_lookahead is the flag indicating if this function call should perform nested lookahead calls
+ * @return true if the text satisfies the regex expression
+ * @return false if the text does not satisfy the regex expression
  */
 bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead) {
     int text_len = strlen(text);
@@ -391,7 +391,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                 
                 bool is_match_no_bracket = bracket_type == NO_BRACKET and text[m] == pattern_char;
                 bool is_match_range_bracket = bracket_type == RANGE_BRACKET and bracket_start_char <= text[m] and text[m] <= bracket_end_char;
-                bool is_match_full_bracket = bracket_type == FULL_BRACKET and is_char_in_full_bracket(bracket_buf, text, m);
+                bool is_match_full_bracket = bracket_type == FULL_BRACKET and is_char_in_full_bracket(bracket_buf, text[m]);
 
                 if (do_lookahead and does_satisfy_lookahead) {
                     // printf("Subpattern %s satisfied, m=%d (%c)\n", subpattern_buf, m, text[m]);
@@ -443,7 +443,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
 
             bool is_match_no_bracket = bracket_type == NO_BRACKET and text[text_i] == pattern_char;
             bool is_match_range_bracket = bracket_type == RANGE_BRACKET and bracket_start_char <= text[text_i] and text[text_i] <= bracket_end_char;
-            bool is_match_full_bracket = bracket_type == FULL_BRACKET and is_char_in_full_bracket(bracket_buf, text, text_i);
+            bool is_match_full_bracket = bracket_type == FULL_BRACKET and is_char_in_full_bracket(bracket_buf, text[text_i]);
 
             if (do_lookahead and does_satisfy_lookahead) {
                 // printf("Subpattern %s satisfied, text_i=%d (%c)\n", subpattern_buf, text_i, text[text_i]);
@@ -478,7 +478,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
 
             bool is_match_no_bracket = bracket_type == NO_BRACKET and pattern[j] == text[text_i];
             bool is_match_range_bracket = bracket_type == RANGE_BRACKET and bracket_start_char <= text[text_i] and text[text_i] <= bracket_end_char;
-            bool is_match_full_bracket = bracket_type == FULL_BRACKET and is_char_in_full_bracket(bracket_buf, text, text_i);
+            bool is_match_full_bracket = bracket_type == FULL_BRACKET and is_char_in_full_bracket(bracket_buf, text[text_i]);
 
             if (is_match_no_bracket or is_match_range_bracket or is_match_full_bracket) {
                 // match found, move on to next j text_i pair:
@@ -511,12 +511,12 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
 /**
  * @brief Enters the directory and prints the contents in the tree 
  * 
- * @param path 
- * @param tree_depth 
+ * @param path is the current path that we're attempting to enter
+ * @param tree_depth is the current depth of the tree that we're traversing
  */
 void enter_directory_tree(const char* path, int tree_depth) {
     if (!is_path_a_directory(path)) {
-        printf("Error: path is not a directory!");
+        printf("Error: path \"%s\" is not a directory!", path);
         return;
     }
     // at this point, path must be a directory that we can enter!
