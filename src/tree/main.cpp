@@ -32,9 +32,9 @@ char subtext_buf[STR_BUF_LEN];
  * @brief Concatenates two strings together with a slash in the middle;
  * requires a buffer to be provided
  * 
- * @param str1 
- * @param str2 
- * @param str_buffer 
+ * @param str1 is first string to be concatenated; goes before the slash
+ * @param str2 is second string to be concatenated; goes after the slash 
+ * @param str_buffer is the buffer that the concatenated string goes into
  */
 void str_concat_slash (const char* str1, const char* str2, char* str_buffer) {
     int str1_len = strlen(str1);
@@ -247,6 +247,9 @@ bool is_pattern_valid(const char* pattern) {
             if (pattern[i] == '(') {
                 if (i+1 < pattern_len and is_special_symbol(pattern[i+1])) {
                     // dont allow "((", "(*", "(?", "()":
+                    is_valid = false;
+                } else if (i+2 < pattern_len and pattern[i+1] == '-' and pattern[i+2] == ')') {
+                    // dont allow "(-)"
                     is_valid = false;
                 } else if (i+3 < pattern_len and pattern[i+2] == '-' and pattern[i+3] == ')') {
                     // dont allow "(x-)..."
