@@ -118,9 +118,10 @@ void parse_pattern_from_valid_regex_cmd(const char* cmd, char* pattern_buf) {
 }
 
 
-bool does_satisfy_regex(const char* text, const char* pattern, int text_i) {
+bool does_satisfy_regex(const char* text, const char* pattern) {
     int text_len = strlen(text);
     int pattern_len = strlen(pattern);
+    int text_i = 0;
     bool has_satisfied_regex_before = false;
 
     char bracket_buf[STR_BUF_LEN];
@@ -175,14 +176,25 @@ bool does_satisfy_regex(const char* text, const char* pattern, int text_i) {
                 printf("CRUMBS bracket type is wrong!\n");
             }
 
+// a*ab vs ab
 
         // Check for "<...>*":
         } else if (j+1 < pattern_len and pattern[j+1] == '*') {
             printf("bloop_4\n");
             char pattern_char = pattern[j];
             printf("pattern[%d] = %c, bracket_type = %d\n", j, pattern_char, bracket_type);
-            
+
+        
             for (int m = text_i; m < text_len; m ++) {
+
+                // perform lookahead:
+                char subpattern_buf[STR_BUF_LEN];
+                get_substr(pattern, subpattern_buf, j+2);
+                char subtext_buf[STR_BUF_LEN];
+                get_substr(text, subtext_buf, m);
+                printf("* START lookahead, j=%d(%c), subtext = %s, subpattern = %s\n", j, pattern[j], subtext_buf, subpattern_buf);
+                bool does_satisfy_lookahead = does_satisfy_regex(subtext_buf, subpattern_buf);                
+                printf("* End lookahead , text = %s, pattern = %s\n", text, pattern);
                 
                 bool is_char_in_full_bracket = false;
                 for (int i = 0; i < bracket_buf_len; i ++) {
@@ -193,7 +205,13 @@ bool does_satisfy_regex(const char* text, const char* pattern, int text_i) {
                     }
                 }
 
-                if (bracket_type == NO_BRACKET and text[m] == pattern_char) {
+                if (does_satisfy_lookahead) {
+                    printf("Subpattern %s satisfied, m=%d (%c)\n", subpattern_buf, m, text[m]);
+                    text_i = m;   
+                    j ++ ; // skip the * symbol to the next regex term
+                    break;
+
+                } else if (bracket_type == NO_BRACKET and text[m] == pattern_char) {
                     // match found, update text_i:
                     printf("*1 text[%d] (%c) == pattern[%d] (%c)\n", m, text[m], j, pattern[j]);
                     has_satisfied_regex_before = true;
@@ -234,16 +252,29 @@ bool does_satisfy_regex(const char* text, const char* pattern, int text_i) {
             char pattern_char = pattern[j];
             printf("pattern[%d] = %c\n", j, pattern_char);
 
+            // perform lookahead:
+            char subpattern_buf[STR_BUF_LEN];
+            get_substr(pattern, subpattern_buf, j+2);
+            char subtext_buf[STR_BUF_LEN];
+            get_substr(text, subtext_buf, text_i);
+            printf("? START lookahead, j=%d(%c), subtext = %s, subpattern = %s\n", j, pattern[j], subtext_buf, subpattern_buf);
+            bool does_satisfy_lookahead = does_satisfy_regex(subtext_buf, subpattern_buf);                
+            printf("? End lookahead , text = %s, pattern = %s\n", text, pattern);            
+
             bool is_char_in_full_bracket = false;
             for (int i = 0; i < bracket_buf_len; i ++) {
                 if (bracket_buf[i] == text[text_i]) {
-                    printf("brkt match: bracket_buf[%d] (%c) == text[%d] (%c)\n", i, bracket_buf[i], text_i, text[text_i]);
+                    // printf("brkt match: bracket_buf[%d] (%c) == text[%d] (%c)\n", i, bracket_buf[i], text_i, text[text_i]);
                     is_char_in_full_bracket = true;
                     break;
                 }
             }
+            
+            if (does_satisfy_lookahead) {
+                printf("Subpattern %s satisfied, text_i=%d (%c)\n", subpattern_buf, text_i, text[text_i]);
+                // do nothing here; increment j on the outside
 
-            if (bracket_type == NO_BRACKET and text[text_i] == pattern_char) {
+            } else if (bracket_type == NO_BRACKET and text[text_i] == pattern_char) {
                 // match found, update text_i:
                 printf("?1 text[%d] (%c) == pattern[%d] (%c)\n", text_i, text[text_i], j, pattern[j]);
                 has_satisfied_regex_before = true;
@@ -280,7 +311,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, int text_i) {
             printf("bloop6\n");
             // pattern char is not *-regex nor ?-regex
             // check if curr pattern char == curr text char
-            printf("pattern[%d] (%c)\n", j, pattern[j]);
+            printf("pattern[%d] (%c), text[%d] (%c)\n", j, pattern[j], text_i, text[text_i]);
 
             bool is_char_in_full_bracket = false;
             for (int i = 0; i < bracket_buf_len; i ++) {
@@ -357,7 +388,7 @@ void enter_directory_tree(const char* path, int tree_depth) {
             indent_tracker[tree_depth] = '|';
         }
 
-        if (does_satisfy_regex(de.name, pattern, 0)) {
+        if (does_satisfy_regex(de.name, pattern)) {
             // get new path name of subdirectories / files:
             str_concat_slash(path, de.name, new_path_buf);
             if (is_path_a_directory(new_path_buf)) {
@@ -422,7 +453,7 @@ int main(const char *cmdline)
 
     // regex testing ground:
     if (do_regex) {
-        bool is_satisfy = does_satisfy_regex(path, pattern, 0);
+        bool is_satisfy = does_satisfy_regex(path, pattern);
         printf("does_satisfy_regex = %d\n", is_satisfy);
     }
 
