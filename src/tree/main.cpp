@@ -19,6 +19,18 @@ int num_of_directories = 0;
 
 const char* TAB = "   ";
 const char* DASHES = "---";
+const char SLASH = '/';
+const char WHITESPACE = ' ';
+const char PIPE = '|';
+const char DASH = '-';
+const char OPEN_BKT = '(';
+const char CLOSE_BKT = ')';
+const char STAR = '*';
+const char QNMK = '?';
+const char DOT = '.';
+
+const char REGEX_CMD_CHAR = 'P';
+const char* DEFAULT_PATH = "/usr";
 
 char indent_tracker[STR_BUF_LEN];
 char pattern[STR_BUF_LEN];
@@ -42,7 +54,7 @@ void str_concat_slash (const char* str1, const char* str2, char* str_buffer) {
     for (int i = 0; i < str1_len; i++) {
         str_buffer[i] = str1[i];
     }
-    str_buffer[str1_len] = '/';
+    str_buffer[str1_len] = SLASH;
     for (int j = 0; j < str2_len; j ++) {
         str_buffer[str1_len + 1 + j] = str2[j];
     }
@@ -92,10 +104,10 @@ bool is_path_a_directory (const char* path) {
  */
 void print_indents(int tree_depth) {
     for (int i = 0; i < tree_depth; i ++) {
-        if (indent_tracker[i] == '|') {
-            printf("%c%s", '|', TAB);
+        if (indent_tracker[i] == PIPE) {
+            printf("%c%s", PIPE, TAB);
         } else {
-            printf("%c%s", ' ', TAB);
+            printf("%c%s", WHITESPACE, TAB);
         }
     }
 }
@@ -110,7 +122,7 @@ void print_indents(int tree_depth) {
 bool is_cmdline_regex(const char* cmd) {
     int cmd_len = strlen(cmd);
     for (int i = 0; i < cmd_len; i ++) {
-        if (i+1 < cmd_len and cmd[i] == '-' and cmd[i+1] == 'P') {
+        if (i+1 < cmd_len and cmd[i] == DASH and cmd[i+1] == REGEX_CMD_CHAR) {
             // cmd contains "-P"
             return true;
         }
@@ -128,14 +140,14 @@ void parse_path_from_valid_regex_cmd(const char* cmd, char* path_buf) {
     int cmd_len = strlen(cmd);
     int path_buf_i = 0;
 
-    if (cmd[0] == '-' and cmd[1] == 'P') {
+    if (cmd[0] == DASH and cmd[1] == REGEX_CMD_CHAR) {
         // cmd is "-P ..." => has no specified path
         path_buf[0] = '\0';
         return;
     }
     
     for (int i = 0; i < cmd_len; i ++) {
-        if (i+2 < cmd_len and cmd[i] == ' ' and cmd[i+1] == '-' and cmd[i+2] == 'P') {
+        if (i+2 < cmd_len and cmd[i] == WHITESPACE and cmd[i+1] == DASH and cmd[i+2] == REGEX_CMD_CHAR) {
             // has reached the "-P" part of "... -P ..."
             path_buf[path_buf_i] == '\0';
             return;
@@ -158,7 +170,7 @@ void parse_pattern_from_valid_regex_cmd(const char* cmd, char* pattern_buf) {
     int pattern_buf_i = 0;
     bool has_reached_pattern = false;
     for (int i = 0; i < cmd_len; i ++) {
-        if (i > 1 and cmd[i-2] == '-'  and cmd[i-1] == 'P' and cmd[i] == ' ' and cmd[i-2] == '-') {
+        if (i > 1 and cmd[i-2] == DASH  and cmd[i-1] == REGEX_CMD_CHAR and cmd[i] == WHITESPACE and cmd[i-2] == DASH) {
             // has reached the end of the "-P " part of cmd; start copying at next iter
             has_reached_pattern = true;
             continue;
@@ -181,7 +193,7 @@ void parse_pattern_from_valid_regex_cmd(const char* cmd, char* pattern_buf) {
 bool is_path_valid(const char* path) {
     int path_len = strlen(path);
     // check if last character is '/' or ' ', a la "/usr/" or "/usr ":
-    if (path[path_len-1] == '/' or path[path_len-1] == ' ') {
+    if (path[path_len-1] == SLASH or path[path_len-1] == WHITESPACE) {
         printf("Error: illegal path \"%s\" entered!\n", path);
         return false;
     }
@@ -197,7 +209,7 @@ bool is_path_valid(const char* path) {
  * @return false if the given character is not a special symbol
  */
 bool is_special_symbol(char c) {
-    return c == '(' or c == ')' or c == '*' or c == '?';
+    return c == OPEN_BKT or c == CLOSE_BKT or c == STAR or c == QNMK;
 }
 
 /**
@@ -212,9 +224,9 @@ bool do_brackets_tally(const char* pattern) {
     int num_open_brackets = 0;
     int num_close_brackets = 0;
     for (int i = 0; i < strlen(pattern); i ++) {
-        if (pattern[i] == '(') {
+        if (pattern[i] == OPEN_BKT) {
             num_open_brackets ++;
-        } else if (pattern[i] == ')') {
+        } else if (pattern[i] == CLOSE_BKT) {
             num_close_brackets ++;
         }
     }
@@ -239,29 +251,29 @@ bool is_pattern_valid(const char* pattern) {
         if (is_special_symbol(pattern[0])) {
             // dont allow "(x", ")x", "*x", "?x":
             is_valid = false;
-        } else if (pattern[1] == '(' or pattern[1] == ')') {
+        } else if (pattern[1] == OPEN_BKT or pattern[1] == CLOSE_BKT) {
             // dont allow "(x", ")x", "*x", "?x":
             is_valid = false;
         }   
     } else {
         for (int i = 0; i < pattern_len; i ++) {
-            if (pattern[i] == '(') {
+            if (pattern[i] == OPEN_BKT) {
                 if (i+1 < pattern_len and is_special_symbol(pattern[i+1])) {
                     // dont allow "((", "(*", "(?", "()":
                     is_valid = false;
-                } else if (i+2 < pattern_len and pattern[i+1] == '-' and pattern[i+2] == ')') {
+                } else if (i+2 < pattern_len and pattern[i+1] == DASH and pattern[i+2] == CLOSE_BKT) {
                     // dont allow "(-)"
                     is_valid = false;
-                } else if (i+3 < pattern_len and pattern[i+2] == '-' and pattern[i+3] == ')') {
+                } else if (i+3 < pattern_len and pattern[i+2] == DASH and pattern[i+3] == CLOSE_BKT) {
                     // dont allow "(x-)..."
                     is_valid = false;
                 }
-            } else if (pattern[i] == ')') {
+            } else if (pattern[i] == CLOSE_BKT) {
                 // dont allow "))":
-                if (i+1 < pattern_len and pattern[i+1] == ')') is_valid = false;
-            } else if (pattern[i] == '*' or pattern[i] == '?') {
+                if (i+1 < pattern_len and pattern[i+1] == CLOSE_BKT) is_valid = false;
+            } else if (pattern[i] == STAR or pattern[i] == QNMK) {
                 // dont allow "**", "*?", "??", "?*":
-                if (i+1 < pattern_len and pattern[i+1] == '*' or pattern[i+1] == '?') is_valid = false;
+                if (i+1 < pattern_len and pattern[i+1] == STAR or pattern[i+1] == QNMK) is_valid = false;
             }
             if (!is_valid) break;
         }
@@ -339,10 +351,10 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
     if (strlen(pattern) == 0) return false; // nothing can match an emtpy regex pattern
     for (int j = 0; j < pattern_len; j ++) {
 
-        if (pattern[j] == '(') {
+        if (pattern[j] == OPEN_BKT) {
             // printf("bloop1\n");
             is_within_brackets = true;
-            if (j+2 < pattern_len and pattern[j+2] == '-') {
+            if (j+2 < pattern_len and pattern[j+2] == DASH) {
                 // (x-y)
                 bracket_type = RANGE_BRACKET;
             } else {
@@ -350,12 +362,12 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                 bracket_type = FULL_BRACKET;
             }
 
-        } else if (is_within_brackets and pattern[j+1] != ')') {
+        } else if (is_within_brackets and pattern[j+1] != CLOSE_BKT) {
             // printf("bloop2\n");
             bracket_buf[bracket_buf_i] = pattern[j];
             bracket_buf_i ++;
 
-        } else if (is_within_brackets and pattern[j+1] == ')') {
+        } else if (is_within_brackets and pattern[j+1] == CLOSE_BKT) {
             // printf("bloop3\n");
             // add last (curr) elem in brackets to bracket_buf
             bracket_buf[bracket_buf_i] = pattern[j];
@@ -373,7 +385,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
             }
 
         // Check for "<...>*":
-        } else if (j+1 < pattern_len and pattern[j+1] == '*') {
+        } else if (j+1 < pattern_len and pattern[j+1] == STAR) {
             // printf("bloop_4\n");
             char pattern_char = pattern[j];
             // printf("pattern[%d] = %c, bracket_type = %d\n", j, pattern_char, bracket_type);
@@ -428,7 +440,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                 }  
             }
 
-        } else if (j+1 < pattern_len and pattern[j+1] == '?') {
+        } else if (j+1 < pattern_len and pattern[j+1] == QNMK) {
             // printf("bloop_5\n");
             char pattern_char = pattern[j];
             // printf("pattern[%d] = %c, bracket_type = %d\n", j, pattern_char, bracket_type);
@@ -536,9 +548,9 @@ void enter_directory_tree(const char* path, int tree_depth) {
         num_of_dirents_remaining --;
         // update indent_tracker array for printing:
         if (num_of_dirents_remaining == 0) {
-            indent_tracker[tree_depth] = ' ';
+            indent_tracker[tree_depth] = WHITESPACE;
         } else {
-            indent_tracker[tree_depth] = '|';
+            indent_tracker[tree_depth] = PIPE;
         }
         bool is_valid_dirent = true;
         if (do_regex) is_valid_dirent = does_satisfy_regex(de.name, pattern, true);
@@ -549,14 +561,14 @@ void enter_directory_tree(const char* path, int tree_depth) {
                 // is a directory
                 num_of_directories ++;
                 print_indents(tree_depth);
-                printf("%c%s%s\n", '|', DASHES, de.name);
+                printf("%c%s%s\n", PIPE, DASHES, de.name);
                 // enter into subdirectory:
                 enter_directory_tree(new_path_buf, tree_depth);
             } else {
                 // is a file
                 num_of_files ++;
                 print_indents(tree_depth);
-                printf("%c%s%s\n", '|', DASHES, de.name);
+                printf("%c%s%s\n", PIPE, DASHES, de.name);
             }
         }
     }
@@ -566,7 +578,7 @@ void enter_directory_tree(const char* path, int tree_depth) {
 int main(const char *cmdline)
 {
     // initialise indent_tracker arr:
-    indent_tracker[0] = '|';
+    indent_tracker[0] = PIPE;
 
     const char* cmd;
     const char* path;
@@ -574,7 +586,7 @@ int main(const char *cmdline)
     char path_buf[STR_BUF_LEN];
 
     if (!cmdline || strlen(cmdline) == 0) {
-        cmd = "/usr";
+        cmd = DEFAULT_PATH;
     } else {
         cmd = cmdline;
     }
@@ -585,7 +597,7 @@ int main(const char *cmdline)
         parse_path_from_valid_regex_cmd(cmd, path_buf);
         if (strlen(path_buf) == 0) {
             // path_buf is empty
-            path = "/usr";
+            path = DEFAULT_PATH;
         } else {
             path = path_buf;
         }
@@ -608,7 +620,7 @@ int main(const char *cmdline)
     //     printf("does_satisfy_regex = %d\n", is_satisfy);
     // }
 
-    printf(".\n");
+    printf("%s\n", DOT);
     enter_directory_tree(path, TREE_DEPTH_BEFORE_ROOT);
     printf("\n%d directories, %d files\n", num_of_directories, num_of_files);
 
