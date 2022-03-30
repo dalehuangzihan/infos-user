@@ -195,7 +195,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                     char subtext_buf[STR_BUF_LEN];
                     get_substr(text, subtext_buf, m);
                     // printf("* START lookahead, j=%d(%c), subtext = %s, subpattern = %s\n", j, pattern_char, subtext_buf, subpattern_buf);
-                    bool does_satisfy_lookahead = does_satisfy_regex(subtext_buf, subpattern_buf, false);   // only look ahead one level (dont recurse)!              
+                    does_satisfy_lookahead = does_satisfy_regex(subtext_buf, subpattern_buf, false);   // only look ahead one level (dont recurse)!              
                     // printf("* End lookahead , text = %s, pattern = %s\n", text, pattern);
                 }
                 
@@ -208,7 +208,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                     }
                 }
 
-                if (does_satisfy_lookahead) {
+                if (do_lookahead and does_satisfy_lookahead) {
                     // printf("Subpattern %s satisfied, m=%d (%c)\n", subpattern_buf, m, text[m]);
                     text_i = m;   
                     j ++ ; // skip the * symbol to the next regex term
@@ -277,7 +277,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                 }
             }
 
-            if (does_satisfy_lookahead) {
+            if (do_lookahead and does_satisfy_lookahead) {
                 // printf("Subpattern %s satisfied, text_i=%d (%c)\n", subpattern_buf, text_i, text[text_i]);
                 // do nothing here; increment j on the outside
 
@@ -388,14 +388,16 @@ void enter_directory_tree(const char* path, int tree_depth) {
     while (readdir(dir_sweep2, &de)) {
         num_of_dirents_remaining --;
 
-        // update indent_tracker array:
+        // update indent_tracker array for printing:
         if (num_of_dirents_remaining == 0) {
             indent_tracker[tree_depth] = ' ';
         } else {
             indent_tracker[tree_depth] = '|';
         }
 
-        if (does_satisfy_regex(de.name, pattern, true)) {
+        bool is_valid_dirent = true;
+        if (do_regex) is_valid_dirent = does_satisfy_regex(de.name, pattern, true);
+        if (is_valid_dirent) {
             // get new path name of subdirectories / files:
             str_concat_slash(path, de.name, new_path_buf);
             if (is_path_a_directory(new_path_buf)) {
@@ -458,7 +460,7 @@ int main(const char *cmdline)
 
     printf("path = %s\n", path);
 
-    // // regex testing ground:
+    // regex testing ground:
     // if (do_regex) {
     //     bool is_satisfy = does_satisfy_regex(path, pattern, true);
     //     printf("does_satisfy_regex = %d\n", is_satisfy);
