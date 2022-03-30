@@ -282,6 +282,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                     // printf("Subpattern %s satisfied, m=%d (%c)\n", subpattern_buf, m, text[m]);
                     text_i = m;   
                     j ++ ; // skip the * symbol to the next regex term
+                    bracket_type = NO_BRACKET;
                     break;
 
                 } else if (bracket_type == NO_BRACKET and text[m] == pattern_char) {
@@ -323,7 +324,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
         } else if (j+1 < pattern_len and pattern[j+1] == '?') {
             // printf("bloop_5\n");
             char pattern_char = pattern[j];
-            // printf("pattern[%d] = %c\n", j, pattern_char);
+            // printf("pattern[%d] = %c, bracket_type = %d\n", j, pattern_char, bracket_type);
 
             // perform lookahead:
             bool does_satisfy_lookahead = false;
@@ -346,6 +347,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                     break;
                 }
             }
+// (a-z)*1?(0-9)? against r11
 
             if (do_lookahead and does_satisfy_lookahead) {
                 // printf("Subpattern %s satisfied, text_i=%d (%c)\n", subpattern_buf, text_i, text[text_i]);
