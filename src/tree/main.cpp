@@ -117,6 +117,76 @@ void parse_pattern_from_valid_regex_cmd(const char* cmd, char* pattern_buf) {
     pattern_buf[pattern_buf_i] = '\0';
 }
 
+bool is_path_valid(const char* path) {
+    int path_len = strlen(path);
+    // check if last character is '/' or ' ', a la "/usr/" or "/usr ":
+    if (path[path_len-1] == '/' or path[path_len-1] == ' ') {
+        printf("Error: illegal path \"%s\" entered!\n", path);
+        return false;
+    }
+    return true;
+}
+
+bool is_special_symbol(char c) {
+    return c == '(' or c == ')' or c == '*' or c == '?';
+}
+
+bool do_brackets_tally(const char* pattern) {
+    int num_open_brackets = 0;
+    int num_close_brackets = 0;
+    for (int i = 0; i < strlen(pattern); i ++) {
+        if (pattern[i] == '(') {
+            num_open_brackets ++;
+        } else if (pattern[i] == ')') {
+            num_close_brackets ++;
+        }
+    }
+    return num_open_brackets == num_close_brackets;
+}
+
+bool is_pattern_valid(const char* pattern) {
+    bool is_valid = true;
+    int pattern_len = strlen(pattern);
+    
+    if (pattern_len == 1) {
+        // if there is only one pattern char, cannot be a special symbol!
+        if (is_special_symbol(pattern[0])) is_valid = false;
+    } else if (pattern_len == 2) {
+        if (is_special_symbol(pattern[0])) {
+            // dont allow "(x", ")x", "*x", "?x":
+            is_valid = false;
+        } else if (pattern[1] == '(' or pattern[1] == ')') {
+            // dont allow "(x", ")x", "*x", "?x":
+            is_valid = false;
+        }   
+    } else {
+        for (int i = 0; i < pattern_len; i ++) {
+            if (pattern[i] == '(') {
+                if (i+1 < pattern_len and is_special_symbol(pattern[i+1])) {
+                    // dont allow "((", "(*", "(?", "()":
+                    is_valid = false;
+                } else if (i+2 < pattern_len and pattern[i+1] == '-' and pattern[i+2] == ')') {
+                    // dont allow "(-)"
+                    is_valid = false;
+                } else if (i+3 < pattern_len and pattern[i+2] == '-' and pattern[i+3] == ')') {
+                    // dont allow "(x-)..."
+                    is_valid = false;
+                }
+            } else if (pattern[i] == ')') {
+                // dont allow "))":
+                if (i+1 < pattern_len and pattern[i+1] == ')') is_valid = false;
+            } else if (pattern[i] == '*' or pattern[i] == '?') {
+                // dont allow "**", "*?", "??", "?*":
+                if (i+1 < pattern_len and pattern[i+1] == '*' or pattern[i+1] == '?') is_valid = false;
+            }
+            if (!is_valid) break;
+        }
+    }
+    // check that brackets tally
+    is_valid = is_valid and do_brackets_tally(pattern);
+    if (!is_valid) printf("Error: illegal pattern \"%s\" entered!\n", pattern);
+    return is_valid;
+}
 
 bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead) {
     int text_len = strlen(text);
@@ -440,13 +510,9 @@ int main(const char *cmdline)
     }
 
     if (is_cmdline_regex(cmd)) {
-        do_regex = true;
-        // get pattern from cmd
-        parse_pattern_from_valid_regex_cmd(cmd, pattern);
-        printf("pattern = %s\n", pattern);
+        do_regex = true;        
         // get path from cmd
         parse_path_from_valid_regex_cmd(cmd, path_buf);
-        
         if (strlen(path_buf) == 0) {
             // path_buf is empty
             path = "/usr";
@@ -454,10 +520,16 @@ int main(const char *cmdline)
             path = path_buf;
         }
 
+        // get pattern from cmd
+        parse_pattern_from_valid_regex_cmd(cmd, pattern);
+        if (!is_pattern_valid(pattern)) return 1;
+        printf("pattern = %s\n", pattern);
+
     } else {
         path = cmd;
     }
 
+    if (!is_path_valid(path)) return 1;
     printf("path = %s\n", path);
 
     // regex testing ground:
