@@ -537,7 +537,9 @@ void enter_directory_tree(const char* path, int tree_depth) {
     HDIR dir_sweep1 = opendir(path, 0);
     struct dirent de;
     while (readdir(dir_sweep1, &de)) {
-        num_of_dirents_remaining ++;
+        bool is_valid_dirent = true;
+        if (do_regex) is_valid_dirent = does_satisfy_regex(de.name, pattern, true);
+        if (is_valid_dirent) num_of_dirents_remaining ++;
     }
     closedir(dir_sweep1);
     // sweep second time, this time entering each directory:
@@ -545,16 +547,17 @@ void enter_directory_tree(const char* path, int tree_depth) {
     HDIR dir_sweep2 = opendir(path, 0);
     char new_path_buf [STR_BUF_LEN];
     while (readdir(dir_sweep2, &de)) {
-        num_of_dirents_remaining --;
-        // update indent_tracker array for printing:
-        if (num_of_dirents_remaining == 0) {
-            indent_tracker[tree_depth] = WHITESPACE;
-        } else {
-            indent_tracker[tree_depth] = PIPE;
-        }
         bool is_valid_dirent = true;
         if (do_regex) is_valid_dirent = does_satisfy_regex(de.name, pattern, true);
         if (is_valid_dirent) {
+            num_of_dirents_remaining --;
+            // update indent_tracker array for printing:
+            if (num_of_dirents_remaining == 0) {
+                indent_tracker[tree_depth] = WHITESPACE;
+            } else {
+                indent_tracker[tree_depth] = PIPE;
+            }
+
             // get new path name of subdirectories / files:
             str_concat_slash(path, de.name, new_path_buf);
             if (is_path_a_directory(new_path_buf)) {
@@ -605,14 +608,14 @@ int main(const char *cmdline)
         // get pattern from cmd
         parse_pattern_from_valid_regex_cmd(cmd, pattern);
         if (!is_pattern_valid(pattern)) return 1;
-        printf("pattern = %s\n", pattern);
+        // printf("pattern = %s\n", pattern);
 
     } else {
         path = cmd;
     }
 
     if (!is_path_valid(path)) return 1;
-    printf("path = %s\n", path);
+    // printf("path = %s\n", path);
 
     // // regex testing ground:
     // if (do_regex) {
@@ -620,7 +623,7 @@ int main(const char *cmdline)
     //     printf("does_satisfy_regex = %d\n", is_satisfy);
     // }
 
-    printf("%s\n", DOT);
+    printf("%c\n", DOT);
     enter_directory_tree(path, TREE_DEPTH_BEFORE_ROOT);
     printf("\n%d directories, %d files\n", num_of_directories, num_of_files);
 
