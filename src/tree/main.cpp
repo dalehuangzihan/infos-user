@@ -33,7 +33,6 @@ const char REGEX_CMD_CHAR = 'P';
 const char* DEFAULT_PATH = "/usr";
 
 char indent_tracker[STR_BUF_LEN];
-char pattern[STR_BUF_LEN];
 bool do_regex = false;
 
 
@@ -533,8 +532,9 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
  * 
  * @param path is the current path that we're attempting to enter
  * @param tree_depth is the current depth of the tree that we're traversing
+ * @param pattern is the pattern that we're checking the dirent names against
  */
-void enter_directory_tree(const char* path, int tree_depth) {
+void enter_directory_tree(const char* path, int tree_depth, const char* pattern) {
     if (!is_path_a_directory(path)) {
         printf("Error: path \"%s\" is not a directory!", path);
         return;
@@ -574,7 +574,7 @@ void enter_directory_tree(const char* path, int tree_depth) {
                 print_indents(tree_depth);
                 printf("%c%s%s\n", PIPE, DASHES, de.name);
                 // enter into subdirectory:
-                enter_directory_tree(new_path_buf, tree_depth);
+                enter_directory_tree(new_path_buf, tree_depth, pattern);
             } else {
                 // is a file
                 num_of_files ++;
@@ -595,6 +595,7 @@ int main(const char *cmdline)
     const char* path;
 
     char path_buf[STR_BUF_LEN];
+    char pattern[STR_BUF_LEN];
 
     if (!cmdline || strlen(cmdline) == 0) {
         cmd = DEFAULT_PATH;
@@ -624,7 +625,7 @@ int main(const char *cmdline)
     if (!is_path_valid(path)) return 1;
 
     printf("%c\n", DOT);
-    enter_directory_tree(path, TREE_DEPTH_BEFORE_ROOT);
+    enter_directory_tree(path, TREE_DEPTH_BEFORE_ROOT, pattern);
     printf("\n%d directories, %d files\n", num_of_directories, num_of_files);
 
     return 0;
