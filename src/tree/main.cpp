@@ -36,7 +36,6 @@ char indent_tracker[STR_BUF_LEN];
 char pattern[STR_BUF_LEN];
 bool do_regex = false;
 
-char bracket_buf[STR_BUF_LEN];
 char subpattern_buf[STR_BUF_LEN];
 char subtext_buf[STR_BUF_LEN];
 
@@ -324,6 +323,17 @@ bool do_recursive_regex_lookahead(const char* text, int text_m, const char* patt
     return does_satisfy_lookahead;
 }
 
+int get_num_of_star_qnmk_terms(const char* pattern) {
+    int pattern_len = strlen(pattern);
+    int num_of_star_qnmk_terms = 0;
+    for (int i = 0; i < pattern_len; i ++) {
+        if (pattern[i] == '*' or pattern[i] == '?') {
+            num_of_star_qnmk_terms ++;
+        }
+    }
+    return num_of_star_qnmk_terms;
+}
+
 /**
  * @brief Checks if the given text satisfies the given regex pattern
  * 
@@ -334,11 +344,19 @@ bool do_recursive_regex_lookahead(const char* text, int text_m, const char* patt
  * @return false if the text does not satisfy the regex expression
  */
 bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead) {
+    // // TODO FOR TESTING:
+    // do_lookahead = false;   // REMOVE
+    
     int text_len = strlen(text);
     int pattern_len = strlen(pattern);
     int text_i = 0;
     bool has_satisfied_regex_before = false;
+    bool has_star_qnmk_overhang = false;
+    bool has_match_in_overhang = false;
+    int num_of_star_qnmk_terms_remaining = get_num_of_star_qnmk_terms(pattern);
+    // printf("START num_of_star_qnmk_terms_remaining = %d\n", num_of_star_qnmk_terms_remaining);
 
+    char bracket_buf[STR_BUF_LEN];
     int bracket_buf_i = 0;  // is index for bracket buf elem
     int bracket_buf_len = 0;
     bool is_within_brackets = false;
@@ -350,6 +368,9 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
     // printf("pattern_len = %d\n", pattern_len);
     if (strlen(pattern) == 0) return false; // nothing can match an emtpy regex pattern
     for (int j = 0; j < pattern_len; j ++) {
+
+        if (text_i+1 == text_len and num_of_star_qnmk_terms_remaining > 0) has_star_qnmk_overhang = true;
+        // if (has_star_qnmk_overhang) printf("has_star_qnmk_overhang = %d\n", has_star_qnmk_overhang);
 
         if (pattern[j] == OPEN_BKT) {
             // printf("bloop1\n");
@@ -389,6 +410,8 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
             // printf("bloop_4\n");
             char pattern_char = pattern[j];
             // printf("pattern[%d] = %c, bracket_type = %d\n", j, pattern_char, bracket_type);
+            num_of_star_qnmk_terms_remaining --;
+            // printf("num_of_star_qnmk_terms_remaining = %d\n", num_of_star_qnmk_terms_remaining);
 
             for (int m = text_i; m < text_len; m ++) {
 
@@ -407,7 +430,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
 
                 if (do_lookahead and does_satisfy_lookahead) {
                     // printf("Subpattern %s satisfied, m=%d (%c)\n", subpattern_buf, m, text[m]);
-                    text_i = m;   
+                    text_i = m;
                     j ++ ; // skip the * symbol to the next regex term
                     bracket_type = NO_BRACKET;
                     break;
@@ -420,6 +443,12 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
 
                     has_satisfied_regex_before = true;
                     text_i = m;
+
+                    if (text_i+1 == text_len and num_of_star_qnmk_terms_remaining > 0) has_star_qnmk_overhang = true;
+                    // if (has_star_qnmk_overhang) printf("has_star_qnmk_overhang = %d\n", has_star_qnmk_overhang);
+                    if (has_star_qnmk_overhang) has_match_in_overhang = true;
+                    // printf("has_match_in_overhang = %d\n", has_match_in_overhang);
+
                     if (text_i+1 == text_len) {
                         j++;  // is last char of text, move to "next" pattern term; skips * symbol
                         bracket_type = NO_BRACKET;
@@ -429,21 +458,33 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                 } else {
                     // printf("*4 text[%d] (%c) != pattern[%d] (%c)\n", m, text[m], j, pattern[j]);
                     if (text_len == 1 and j+1 == pattern_len-1 and !has_satisfied_regex_before) return false; 
-                            // text only has one char; 
-                            // curr regex term is last term in pattern (not matched); 
-                            // has not matched any terms before now
-
-                    if (j+2 < pattern_len) text_i = m; // dont increment if there are no more regex terms to compare to after 
+                                    // text only has one char; 
+                                    // curr regex term is last term in pattern (not matched); 
+                                    // has not matched any terms before now
+                    if (j+2 < pattern_len) text_i = m; // dont update if there are no more regex terms to compare to after  
+                    // printf("text_i = %d\n", text_i);
+                    if (text_i+1 == text_len and j+2 == pattern_len) {
+                        if (!has_star_qnmk_overhang) return false;
+                        if (has_star_qnmk_overhang and !has_match_in_overhang) return false;
+                    }
+                                    // last text char does not match with last regex pattern term;
+                                    // this last pattern char is not an "extra overhanging * or ? regex term" 
+                                    // => mismatch cannot be ignored! 
                     j ++;   // to skip the * symbol and move on to the next/"next" regex term
                     bracket_type = NO_BRACKET;  // reset bracket type since we're moving to next regex term
                     break;
                 }  
             }
-
+// ab*c* vs ab
         } else if (j+1 < pattern_len and pattern[j+1] == QNMK) {
             // printf("bloop_5\n");
             char pattern_char = pattern[j];
             // printf("pattern[%d] = %c, bracket_type = %d\n", j, pattern_char, bracket_type);
+            num_of_star_qnmk_terms_remaining --;
+            // printf("num_of_star_qnmk_terms_remaining = %d\n", num_of_star_qnmk_terms_remaining);
+
+            if (text_i+1 == text_len and num_of_star_qnmk_terms_remaining > 0) has_star_qnmk_overhang = true;
+            // if (has_star_qnmk_overhang) printf("has_star_qnmk_overhang = %d\n", has_star_qnmk_overhang);
 
             // perform lookahead:
             bool does_satisfy_lookahead = false;
@@ -468,6 +509,8 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                 // if (is_match_full_bracket) printf("?3 text[%d] (%c) found in full bracket %s\n", text_i, text[text_i], bracket_buf);
                 
                 has_satisfied_regex_before = true;
+                if (has_star_qnmk_overhang) has_match_in_overhang = true;
+                // printf("has_match_in_overhang = %d\n", has_match_in_overhang);
                 if (text_i+1 < text_len and j+2 < pattern_len) text_i ++;   // dont increment if there are no more regex chars to compare to
 
             } else {
@@ -478,9 +521,18 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                                     // curr regex term is last term in pattern (not matched)
                                     // has not matched any terms before now
                                     // e.g. "f" against "a?b?c?d?"
+                // printf("text_i = %d\n", text_i);
+                if (text_i+1 == text_len and j+2 == pattern_len) {
+                    if (!has_star_qnmk_overhang) return false;
+                    if (has_star_qnmk_overhang and !has_match_in_overhang) return false;
+                }
+                                    // last text char does not match with last regex pattern term;
+                                    // this last pattern char is not an "extra overhanging * or ? regex term" 
+                                    // => mismatch cannot be ignored! 
             }
             bracket_type = NO_BRACKET;  // reset bracket mode since moving on to next regex term
-            j ++;  // move to next/"next" pattern term; skips ? symbol  
+            j ++;  // move to next/"next" pattern term; skips ? symbol
+   
 
         } else {
             // printf("bloop6\n");
@@ -608,14 +660,14 @@ int main(const char *cmdline)
         // get pattern from cmd
         parse_pattern_from_valid_regex_cmd(cmd, pattern);
         if (!is_pattern_valid(pattern)) return 1;
-        // printf("pattern = %s\n", pattern);
+        printf("pattern = %s, len = %d\n", pattern, strlen(pattern));
 
     } else {
         path = cmd;
     }
 
     if (!is_path_valid(path)) return 1;
-    // printf("path = %s\n", path);
+    printf("path = %s\n", path);
 
     // // regex testing ground:
     // if (do_regex) {
