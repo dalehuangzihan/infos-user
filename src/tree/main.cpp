@@ -475,7 +475,7 @@ bool does_satisfy_regex(const char* text, const char* pattern, bool do_lookahead
                     break;
                 }  
             }
-// ab*c* vs ab
+
         } else if (j+1 < pattern_len and pattern[j+1] == QNMK) {
             // printf("bloop_5\n");
             char pattern_char = pattern[j];
